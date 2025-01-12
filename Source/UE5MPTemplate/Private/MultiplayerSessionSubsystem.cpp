@@ -2,11 +2,11 @@
 #include "OnlineSubsystem.h"
 #include "Online/OnlineSessionNames.h"
 
-DEFINE_LOG_CATEGORY_STATIC(MultiplayerSessionSubsystem, Verbose, All)
+DEFINE_LOG_CATEGORY_STATIC(MultiplayerSessionSubsystem, Log, All)
 
 UMultiplayerSessionSubsystem::UMultiplayerSessionSubsystem()
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem()"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem()"));
 	CreateServerAfterDestroy = false;
 	DestroyServerName = "";
 	ServerNameToFind = "";
@@ -15,12 +15,12 @@ UMultiplayerSessionSubsystem::UMultiplayerSessionSubsystem()
 
 void UMultiplayerSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::Initialize()"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::Initialize()"));
 	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
 	if (OnlineSubsystem)
 	{
 		FString SubsystemName = OnlineSubsystem->GetSubsystemName().ToString();
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT(" Online Subsystem: %s "), *SubsystemName);
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT(" Online Subsystem: %s "), *SubsystemName);
 
 		SessionInterface = OnlineSubsystem->GetSessionInterface();
 		if (SessionInterface.IsValid())
@@ -39,7 +39,7 @@ void UMultiplayerSessionSubsystem::Initialize(FSubsystemCollectionBase& Collecti
 
 void UMultiplayerSessionSubsystem::Deinitialize()
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::Deinitialize()"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::Deinitialize()"));
 	CreateServerAfterDestroy = false;
 	SessionInterface->EndSession(MySessionName);
 	SessionInterface->DestroySession(MySessionName);
@@ -47,10 +47,10 @@ void UMultiplayerSessionSubsystem::Deinitialize()
 
 void UMultiplayerSessionSubsystem::CreateServer(FString ServerName)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::CreateServer"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::CreateServer"));
 	if (ServerName.IsEmpty())
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Server name cannot be empty!"));
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Server name cannot be empty!"));
 		ServerCreateDelegate.Broadcast(false);
 		return;
 	}
@@ -58,7 +58,7 @@ void UMultiplayerSessionSubsystem::CreateServer(FString ServerName)
 	FNamedOnlineSession* ExistingSession = SessionInterface->GetNamedSession(MySessionName);
 	if (ExistingSession)
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Session with name %s already exists, destroying it."),
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Session with name %s already exists, destroying it."),
 		       *MySessionName.ToString());
 		CreateServerAfterDestroy = true;
 		DestroyServerName = ServerName;
@@ -77,6 +77,8 @@ void UMultiplayerSessionSubsystem::CreateServer(FString ServerName)
 	SessionSettings.bUseLobbiesIfAvailable = true;
 	SessionSettings.bUsesPresence = true;
 	SessionSettings.bAllowJoinViaPresence = true;
+	SessionSettings.bAllowInvites = true;
+
 	bool IsLAN = false;
 	if (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL")
 	{
@@ -87,15 +89,15 @@ void UMultiplayerSessionSubsystem::CreateServer(FString ServerName)
 	SessionSettings.Set(FName("SERVER_NAME"), ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	SessionInterface->CreateSession(0, MySessionName, SessionSettings);
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Session created"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Session created"));
 }
 
 void UMultiplayerSessionSubsystem::FindServer(FString ServerName)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::FindServer"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::FindServer"));
 	if (ServerName.IsEmpty())
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Server name cannot be empty!"));
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Server name cannot be empty!"));
 		ServerJoinDelegate.Broadcast(false);
 		return;
 	}
@@ -117,21 +119,21 @@ void UMultiplayerSessionSubsystem::FindServer(FString ServerName)
 
 void UMultiplayerSessionSubsystem::OnCreateSessionComplete(FName SessionName, bool WasSuccessful)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::OnCreateSessionComplete"));
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Creating was successful %d"), WasSuccessful);
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::OnCreateSessionComplete"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Creating was successful %d"), WasSuccessful);
 	ServerCreateDelegate.Broadcast(WasSuccessful);
 
 	if (WasSuccessful)
 	{
-		FString Path = FString::Printf(TEXT("%s?listen"),*GameMapPath);
+		FString Path = FString::Printf(TEXT("%s?listen"), *GameMapPath);
 		GetWorld()->ServerTravel(Path);
 	}
 }
 
 void UMultiplayerSessionSubsystem::OnDestroySessionComplete(FName SessionName, bool WasSuccessful)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::OnDestroySessionComplete"));
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Destroying SessionName: %s, Success: %d"),
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::OnDestroySessionComplete"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Destroying SessionName: %s, Success: %d"),
 	       *SessionName.ToString(), WasSuccessful);
 
 	if (CreateServerAfterDestroy)
@@ -143,7 +145,7 @@ void UMultiplayerSessionSubsystem::OnDestroySessionComplete(FName SessionName, b
 
 void UMultiplayerSessionSubsystem::OnFindSessionsComplete(bool WasSuccessful)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::OnFindSessionsComplete"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::OnFindSessionsComplete"));
 	if (!WasSuccessful) return;
 	if (ServerNameToFind.IsEmpty()) return;
 
@@ -151,7 +153,7 @@ void UMultiplayerSessionSubsystem::OnFindSessionsComplete(bool WasSuccessful)
 
 	if (Results.Num() > 0)
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("%d sessions found."), Results.Num());
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("%d sessions found."), Results.Num());
 		FOnlineSessionSearchResult* CorrectResult = 0;
 		for (FOnlineSessionSearchResult Result : Results)
 		{
@@ -163,7 +165,7 @@ void UMultiplayerSessionSubsystem::OnFindSessionsComplete(bool WasSuccessful)
 				if (ServerName.Equals(ServerNameToFind))
 				{
 					CorrectResult = &Result;
-					UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Found server with name: %s"), *ServerName);
+					UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Found server with name: %s"), *ServerName);
 					break;
 				}
 			}
@@ -171,58 +173,59 @@ void UMultiplayerSessionSubsystem::OnFindSessionsComplete(bool WasSuccessful)
 
 		if (CorrectResult)
 		{
-			UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Joining session"));
+			UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Joining session"));
 			// internet says these 4 lines are needed to fix problems with joining
-			FOnlineSessionSearchResult& ModifiableSessionResult = const_cast<FOnlineSessionSearchResult&>(*CorrectResult);
+			FOnlineSessionSearchResult& ModifiableSessionResult = const_cast<FOnlineSessionSearchResult&>(*
+				CorrectResult);
 			FOnlineSessionSettings& SessionSettings = ModifiableSessionResult.Session.SessionSettings;
 			SessionSettings.bUsesPresence = true;
 			SessionSettings.bUseLobbiesIfAvailable = true;
-			
+
 			SessionInterface->JoinSession(0, MySessionName, *CorrectResult);
 		}
 		else
 		{
-			UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Couldn't find server: %s"), *ServerNameToFind);
+			UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Couldn't find server: %s"), *ServerNameToFind);
 			ServerNameToFind = "";
 			ServerJoinDelegate.Broadcast(false);
 		}
 	}
 	else
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Zero sessions found."));
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Zero sessions found."));
 		ServerJoinDelegate.Broadcast(false);
 	}
 }
 
 void UMultiplayerSessionSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {
-	UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("UMultiplayerSessionSubsystem::OnJoinSessionComplete"));
+	UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("UMultiplayerSessionSubsystem::OnJoinSessionComplete"));
 
 	ServerJoinDelegate.Broadcast(Result == EOnJoinSessionCompleteResult::Success);
 
 	if (Result == EOnJoinSessionCompleteResult::Success)
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Successfully joined session %s"), *SessionName.ToString());
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Successfully joined session %s"), *SessionName.ToString());
 		FString Address = "";
 		bool Success = SessionInterface->GetResolvedConnectString(MySessionName, Address);
 		if (Success)
 		{
-			UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Address: %s"), *Address);
-			
+			UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Address: %s"), *Address);
+
 			APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
 			if (PlayerController)
 			{
-				UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("Start Client travel"));
+				UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("Start Client travel"));
 				PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
 			}
 		}
 		else
 		{
-			UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("GetResolvedConnectString returned false!"));
+			UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("GetResolvedConnectString returned false!"));
 		}
 	}
 	else
 	{
-		UE_LOG(MultiplayerSessionSubsystem, Verbose, TEXT("OnJoinSessionComplete failed"));
+		UE_LOG(MultiplayerSessionSubsystem, Log, TEXT("OnJoinSessionComplete failed"));
 	}
 }
